@@ -1,0 +1,12 @@
+; This is the build script for the game data file BREAKOUT.PCK which is 
+; put on disc.
+
+build,pck,"BREAKOUT.PCK"
+	file,"DATA\FONT.TIM"
+	file,"DATA\TITLE.TIM"
+	file,"DATA\LEVEL.TMD"
+	file,"DATA\PADDLE.TMD"
+	file,"DATA\BALL.TMD"
+	file,"DATA\MODELS\WOOD.TIM"
+	file,"DATA\MODELS\BORDER.TIM"
+endbuild

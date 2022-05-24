@@ -1,0 +1,7 @@
+# Created from "paddle.dxf" by dxf2rsd(v2.81) -back at 19:12 05/23/122
+@RSD940102
+PLY=paddle.ply
+MAT=paddle.mat
+GRP=paddle.grp
+# Number of Texture Files
+NTEX=0

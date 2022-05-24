@@ -1,0 +1,71 @@
+Define LicensePath C:\PS\cdgen\LCNSFILE\
+Define LicenseFile licensee.dat
+
+Disc CDROMXA_PSX ; the disk format
+
+	CatalogNumber 0000000000000
+
+	LeadIn XA	; lead in track (track 0)
+		Empty 1000	; defines the lead in size (min 150)
+		PostGap 150	; required gap at end of the lead in
+	EndTrack	; end of the lead in track
+
+	Track XA ; start of the XA (data) track
+		Pause 150 		; required pause in first track after the lead in
+		Volume ISO9660 	; define ISO 9660 volume
+			
+			SystemArea C:\PS\cdgen\LCNSFILE\LICENSEE.DAT
+			
+			PrimaryVolume ; start point of primary volume
+
+				SystemIdentifier 	"PLAYSTATION" 	; required indetifier (do not change)
+				ApplicationIdentifier 	"PLAYSTATION" 	; required indetifier (do not change)
+				VolumeIdentifier 	"BREAKOUT" ; app specific identifiers (changeable)
+				VolumeSetIdentifier 	"BREAKOUT" ; app specific identifiers (changeable)
+				PublisherIdentifier 	"KYORIL" 		; app specific identifiers (changeable)
+				DataPreparerIdentifier 	"KYORIL"		; app specific identifiers (changeable)
+
+				; path tables as specified for PlayStation
+				LPath
+				OptionalLpath
+				MPath
+				OptionalMpath
+
+				Hierarchy ;start point of root directory definition
+
+					XAFileAttributes  Form1 Audio
+					XAVideoAttributes ApplicationSpecific
+					XAAudioAttributes ADPCM_C Stereo
+
+					File SYSTEM.CNF
+						XAFileAttributes Form1 Data
+						Source system.cnf
+					EndFile
+					
+					File MAIN.PSX
+						XAFileAttributes Form1 Data
+						Source BREAKOUT.EXE
+					EndFile
+
+					File BREAKOUT.PCK
+						XAFileAttributes Form1 Data
+						Source BREAKOUT.PCK
+					EndFile
+					
+				EndHierarchy
+				
+			EndPrimaryVolume
+			
+		EndVolume
+
+		Empty 300
+		PostGap 150
+	
+	EndTrack
+
+	LeadOut XA ; Must either be AUDIO, XA or MODE depending on the last data written
+
+	Empty 150
+	EndTrack
+
+EndDisc

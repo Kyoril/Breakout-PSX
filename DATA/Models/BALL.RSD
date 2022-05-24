@@ -1,0 +1,7 @@
+# Created from "ball.dxf" by dxf2rsd(v2.81) -back at 19:12 05/23/122
+@RSD940102
+PLY=ball.ply
+MAT=ball.mat
+GRP=ball.grp
+# Number of Texture Files
+NTEX=0
