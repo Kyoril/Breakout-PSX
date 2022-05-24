@@ -1,4 +1,7 @@
 *.ISO
+*.suo
+*.ncb
+*.user
 DISC/*.EXE
 DISC/*.SYM
 DISC/*.PCK
