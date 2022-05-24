@@ -1,0 +1,4 @@
+*.ISO
+DISC/*.EXE
+DISC/*.SYM
+DISC/*.PCK
