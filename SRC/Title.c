@@ -46,6 +46,9 @@ int HandleGsTitle()
 	titleSprite = CreateSprite(titleImage, 0, 0, 256, 64, 0, 0);
 	titleSprite.x = 24;
 
+	/* Disable rendering for now */
+	SetDispMask(1);
+
 	while(1)
 	{
 		BeginFrame();

@@ -71,6 +71,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Ball.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Breakout.c"
 				>
 			</File>

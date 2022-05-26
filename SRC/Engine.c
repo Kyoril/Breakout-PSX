@@ -281,6 +281,21 @@ void SetSpritePosition(GsSPRITE* sprite, GsIMAGE* timParams, short x, short y)
 	sprite->v = (timParams->py & 0xff) + (y % 256);
 }
 
+volatile int fps;
+volatile int fps_counter;
+volatile int fps_measure;
+
+void vsync_cb()
+{
+    fps_counter++;
+    if( fps_counter >= 50 )
+	{
+        fps = fps_measure;
+        fps_measure = 0;
+        fps_counter = 0;
+    }
+}
+
 void InitGraphics()
 {
 	int i;
@@ -315,6 +330,8 @@ void InitGraphics()
 	s_clearColor.red = 0;
 	s_clearColor.green = 0;
 	s_clearColor.blue = 0;
+
+	VSyncCallback(vsync_cb);
 }
 
 void DrawSprite(GsSPRITE* sprite)
@@ -442,7 +459,6 @@ TextPosition DrawFormat(short x, short y, char* text, ...)
 void ErrorMessage(char* format, ...)
 {
 	char buffer[512];
-
 	va_list list;
 
 	va_start( list, format );
@@ -452,7 +468,12 @@ void ErrorMessage(char* format, ...)
 	/* Initialize system font for easy text rendering */
 	FntLoad(960, 0); /* x, y in video memory buffer */
 	SetDumpFnt(FntOpen(0, 0, 320, 240, 0, 600)); /* screen x, y, w, h, clearBg, maxChars*/
-	
+
+	SwapTo2D();
+
+	/* Ensure rendering is enabled */
+	SetDispMask(1);
+
 	while(1) 
 	{
 		BeginFrame();
@@ -475,8 +496,12 @@ void Clear()
 
 void EndFrame()
 {
+	int vsyncsSinceGameLaunch;
+
 	DrawSync(0);
+
 	VSync(0);
+	fps_measure++;
 
 	GsSwapDispBuff();
 	GsSortClear(s_clearColor.red, s_clearColor.green, s_clearColor.blue, &WorldOT[s_activeBuff]);

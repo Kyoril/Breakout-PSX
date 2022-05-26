@@ -1,3 +1,4 @@
+/* PckLib was written by LameGuy64 (please visit https://psxdev.net for more details! */
 
 #include "PckLib.h"
 

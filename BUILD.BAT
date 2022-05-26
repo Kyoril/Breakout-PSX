@@ -32,6 +32,12 @@ PSXLICENSE /eu /i BREAKOUT.ISO
 
 cd ..
 move /Y %rootdir:~0,-1%\DISC\BREAKOUT.ISO %rootdir:~0,-1%\
+GOTO finish
 
 :build_error
+cd %rootdir:~0,-1%
 REM ECHO There was a build error!
+PAUSE
+
+:finish
+
