@@ -10,4 +10,8 @@ build,pck,"BREAKOUT.PCK"
 	file,"DATA\BALL.TMD"
 	file,"DATA\MODELS\WOOD.TIM"
 	file,"DATA\MODELS\BORDER.TIM"
+	file,"DATA\BLOCK01.TMD"
+	file,"DATA\BLOCK02.TMD"
+	file,"DATA\BLOCK03.TMD"
+	file,"DATA\BLOCK04.TMD"
 endbuild

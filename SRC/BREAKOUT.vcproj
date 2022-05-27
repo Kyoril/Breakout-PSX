@@ -71,10 +71,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Ball.h"
-				>
-			</File>
-			<File
 				RelativePath=".\Breakout.c"
 				>
 			</File>
@@ -121,6 +117,10 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
+				RelativePath=".\Ball.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Breakout.h"
 				>
 			</File>
@@ -134,6 +134,10 @@
 			</File>
 			<File
 				RelativePath=".\Game.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Level.h"
 				>
 			</File>
 		</Filter>

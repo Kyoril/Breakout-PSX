@@ -152,8 +152,8 @@ int HandleGsTitle()
 			}
 		}
 
-		DrawText("Copyright (C) 2022, Kyoril", 64, 188);
-		DrawText("All rights reserved.", 84, 208);
+		DrawText("Homebrew Game by Kyoril", 64, 188);
+		DrawText("Pre-release version", 84, 208);
 
 		DrawSprite(&titleSprite);
 

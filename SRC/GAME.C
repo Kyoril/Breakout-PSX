@@ -10,6 +10,8 @@
 #include "Title.h"
 #include "Engine.h"
 #include "Breakout.h"
+#include "Ball.h"
+#include "Level.h"
 
 // Camera coordinates
 struct {
@@ -19,27 +21,25 @@ struct {
 	GsCOORDINATE2 coord2;
 } Camera = {0};
 
+typedef struct {
+	u_char type;
+	u_char power;
+	VECTOR pos;
+	u_char renderId;
+} Block;
+
 // Object handler
-#define MAX_OBJECTS 4
+#define MAX_OBJECTS 8
 GsDOBJ2	Object[MAX_OBJECTS]={0};
 int		ObjectCount=0;
+u_char	ObjectSort[MAX_OBJECTS]={255};
 
-/* Struct which contains the state of a single ball. */
-typedef struct {
-	/* If set to 1, the ball is enabled (active in the game). */
-	u_char enabled;
-	/* If set to 1, the ball is currently grabbed by the paddle. */
-	u_char grabbed;
-	/* The absolute position of the ball if it isn't grabbed. */
-	VECTOR pos;
-	/* The position relative to the paddle position if the ball is grabbed. */
-	VECTOR grabbedPos;
-	/* The ball's velocity. */
-	VECTOR vel;
-} Ball;
+#define MAX_BLOCKS 32
+static Block s_blocks[MAX_BLOCKS];
 
-/* The maximum amount of balls that can be active in the game at the same time. */
-#define MAX_BALLS 16
+u_char g_level;
+long g_score;
+short g_tries;
 
 /* Ball instances of the game. */
 static Ball s_balls[MAX_BALLS] = {0};
@@ -50,6 +50,69 @@ static struct {
 	VECTOR vel;
 	SVECTOR rot;
 } s_paddle={0};
+
+#define BLOCK_ROW_HEIGHT(i) (150 - i * 34) - 16
+
+void CreateBlockRow(const char* rowData, VECTOR rowPosition)
+{
+	int i;
+
+	while(*rowData != 0 && *rowData != '\r' && *rowData != '\n')
+	{
+		if (*rowData != ' ')
+		{
+			for (i = 0; i < MAX_BLOCKS; ++i)
+			{
+				if (s_blocks[i].type != 0)
+				{
+					continue;
+				}
+
+				switch(*rowData)
+				{
+				case '1':
+					s_blocks[i].type = 1;
+					s_blocks[i].power = 1;
+					break;
+				case '2':
+					s_blocks[i].type = 2;
+					s_blocks[i].power = 2;
+					break;
+				case '3':
+					s_blocks[i].type = 3;
+					s_blocks[i].power = 4;
+					break;
+				case '4':
+					s_blocks[i].type = 3;
+					s_blocks[i].power = 3;
+					break;
+				default:
+					ErrorMessage("Invalid block type discovered!");
+					break;
+				}
+				
+				copyVector(&s_blocks[i].pos, &rowPosition);
+				break;
+			}
+
+			if (i == MAX_BLOCKS)
+			{
+				ErrorMessage("Maximum number of blocks reached!");
+				break;
+			}
+		}
+
+		rowPosition.vx += ONE * 64;
+		rowData++;
+	}
+}
+
+VECTOR makeVector(long x, long y, long z)
+{
+	VECTOR result;
+	setVector(&result, x * ONE, y * ONE, z * ONE);
+	return result;
+}
 
 /* 
  * Tries to add a new ball to the game. On success, the ball index is returned.
@@ -89,6 +152,89 @@ int InitBall(u_char grabbed, VECTOR* position)
 	return -1;
 }
 
+void InitLevel(int level)
+{
+	int i;
+	VECTOR position;
+
+	for (i = 0; i < MAX_BLOCKS; ++i)
+	{
+		s_blocks[i].type = 0;
+	}
+
+	for (i = 0; i < MAX_BALLS; ++i)
+	{
+		s_balls[i].enabled = 0;
+	}
+
+	InitBall(1, 0);
+
+	switch(level)
+	{
+	case 1:
+		CreateBlockRow(" 1  1  1 ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(1)));
+		CreateBlockRow("12 111 21", makeVector(-280, 0, BLOCK_ROW_HEIGHT(2)));
+		CreateBlockRow("12     21", makeVector(-280, 0, BLOCK_ROW_HEIGHT(3)));
+		CreateBlockRow(" 112 211 ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(4)));
+		break;
+
+	case 2:
+		CreateBlockRow("   222   ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(2)));
+		CreateBlockRow("  2 3 2  ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(3)));
+		CreateBlockRow(" 2 333 2 ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(4)));
+		CreateBlockRow("111111111", makeVector(-280, 0, BLOCK_ROW_HEIGHT(5)));
+		break;
+
+	case 3:
+		CreateBlockRow("33  2  33", makeVector(-280, 0, BLOCK_ROW_HEIGHT(2)));
+		CreateBlockRow("   131   ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(3)));
+		CreateBlockRow("1 12121 1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(4)));
+		CreateBlockRow("212 2 212", makeVector(-280, 0, BLOCK_ROW_HEIGHT(5)));
+		break;
+
+	case 4:
+		CreateBlockRow("111111111", makeVector(-280, 0, BLOCK_ROW_HEIGHT(2)));
+		CreateBlockRow("1   2   1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(3)));
+		CreateBlockRow("1 2 2 2 1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(4)));
+		CreateBlockRow("1 2 3 2 1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(5)));
+		CreateBlockRow("333   333", makeVector(-280, 0, BLOCK_ROW_HEIGHT(6)));
+		break;
+
+	case 5:
+		CreateBlockRow("1   3   1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(2)));
+		CreateBlockRow(" 1 343 1 ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(3)));
+		CreateBlockRow("  23 32  ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(4)));
+		CreateBlockRow("  22122  ", makeVector(-280, 0, BLOCK_ROW_HEIGHT(5)));
+		break;
+
+	case 6:
+		CreateBlockRow("2  111  2", makeVector(-280, 0, BLOCK_ROW_HEIGHT(2)));
+		CreateBlockRow("2 14441 2", makeVector(-280, 0, BLOCK_ROW_HEIGHT(3)));
+		CreateBlockRow("1  333  1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(4)));
+		CreateBlockRow("11     11", makeVector(-280, 0, BLOCK_ROW_HEIGHT(5)));
+		break;
+
+	case 7:
+		CreateBlockRow("1 2 2 2 1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(2)));
+		CreateBlockRow("1       1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(3)));
+		CreateBlockRow("13 3 3 31", makeVector(-280, 0, BLOCK_ROW_HEIGHT(4)));
+		CreateBlockRow("1       1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(5)));
+		CreateBlockRow("4 4 4 4 4", makeVector(-280, 0, BLOCK_ROW_HEIGHT(6)));
+		break;
+
+	case 8:
+		CreateBlockRow("112222211", makeVector(-280, 0, BLOCK_ROW_HEIGHT(3)));
+		CreateBlockRow("1   3   1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(4)));
+		CreateBlockRow("1 2 4 2 1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(5)));
+		CreateBlockRow("1 23332 1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(6)));
+		CreateBlockRow("1  2 2  1", makeVector(-280, 0, BLOCK_ROW_HEIGHT(7)));
+		break;
+
+	default:
+		ErrorMessage("Unsupported level %d!", level);
+		break;
+	}
+}
 
 /* Moves the paddle using the given controller packet for reading player input data from. */
 void MovePaddle(ControllerPacket* controller)
@@ -130,8 +276,8 @@ void MovePaddle(ControllerPacket* controller)
 
 	s_paddle.pos.vx += s_paddle.vel.vx;
 	
-	if (s_paddle.pos.vx < -300*ONE) s_paddle.pos.vx = -300*ONE;
-	if (s_paddle.pos.vx > 300*ONE) s_paddle.pos.vx = 300*ONE;
+	if (s_paddle.pos.vx - 32*ONE < -300*ONE) s_paddle.pos.vx = -300*ONE + 32*ONE;
+	if (s_paddle.pos.vx + 32*ONE > 300*ONE) s_paddle.pos.vx = 300*ONE - 32*ONE;
 }
 
 void crossProduct(SVECTOR *v0, SVECTOR *v1, VECTOR *out)
@@ -170,11 +316,15 @@ void LookAt(VECTOR *eye, VECTOR *at, SVECTOR *up, MATRIX *mtx)
 }
 
 
+#define MIN(a, b) ((a) < (b) ? a : b)
+
 /* Moves all balls that are currently active in the game. */
-void MoveBalls()
+int MoveBalls()
 {
-	int i;
+	int i, j;
+	long distL, distR, distT, distB, minDist;
 	int ballsAlive = 0;
+	int blocksAlive = MAX_BLOCKS;
 
 	for (i = 0; i < MAX_BALLS; ++i)
 	{
@@ -222,6 +372,64 @@ void MoveBalls()
 			}
 
 			/* TODO: Block collision */
+			for (j = 0; j < MAX_BLOCKS; ++j)
+			{
+				if (s_blocks[j].type == 0)
+				{
+					blocksAlive--;
+					continue;
+				}
+
+				if (s_balls[i].pos.vx + (ONE*8) >= s_blocks[j].pos.vx - ONE*32 &&
+					s_balls[i].pos.vx - (ONE*8) <= s_blocks[j].pos.vx + ONE*32 &&
+					s_balls[i].pos.vz + (ONE*8) >= s_blocks[j].pos.vz - ONE*16 &&
+					s_balls[i].pos.vz - (ONE*8) <= s_blocks[j].pos.vz + ONE*16)
+				{
+					s_blocks[j].power--;
+					g_score += s_blocks[j].type;
+
+					if (s_blocks[j].power == 0)
+					{
+						g_score += 100 * s_blocks[j].type;
+						s_blocks[j].type = 0;
+						blocksAlive--;
+					}
+
+					distL = abs(s_balls[i].pos.vx + ONE*8 - (s_blocks[j].pos.vx - ONE*32));
+					distR = abs(s_balls[i].pos.vx - ONE*8 - (s_blocks[j].pos.vx + ONE*32));
+					distT = abs(s_balls[i].pos.vz - ONE*8 - (s_blocks[j].pos.vz + ONE*16));
+					distB = abs(s_balls[i].pos.vz + ONE*8 - (s_blocks[j].pos.vz - ONE*16));
+
+					minDist = MIN(distL, MIN(distR, MIN(distT, distB)));
+
+					if (minDist == distL || minDist == distR)
+					{
+						s_balls[i].vel.vx *= -1;
+
+						if (minDist == distL)
+						{
+							s_balls[i].pos.vx -= ONE*3;
+						}
+						else
+						{
+							s_balls[i].pos.vx += ONE*3;
+						}
+					}
+					else
+					{
+						s_balls[i].vel.vz *= -1;
+
+						if (minDist == distT)
+						{
+							s_balls[i].pos.vz += ONE*3;
+						}
+						else
+						{
+							s_balls[i].pos.vz -= ONE*3;
+						}
+					}
+				}
+			}
 
 			/* Paddle collision */
 			if ((s_balls[i].pos.vx >= s_paddle.pos.vx - 50*ONE) &&
@@ -233,22 +441,25 @@ void MoveBalls()
 				{
 					s_balls[i].pos.vz += 10*ONE;
 					s_balls[i].vel.vz *= -1;
-
-					if (abs(s_paddle.vel.vx) > 0)
-					{
-						//s_balls[i].vel.vx 
-					}
-
-					//VectorNormal(&s_balls[i].vel, &s_balls[i].vel);
+					s_balls[i].vel.vx -= s_paddle.vel.vx / 3;
 				}
 			}
 		}
 	}
 
-	if (ballsAlive <= 0)
+	if (blocksAlive == 0)
 	{
-		InitBall(1, 0);
+		g_score += g_level * 10000;
+
+		if (g_level == NUM_LEVEL)
+		{
+			g_tries++;
+		}
+
+		g_level = (g_level + 1) % NUM_LEVEL;
 	}
+
+	return ballsAlive;
 }
 
 /* Tries to fire one ball which is currently grabbed by the paddle. */
@@ -271,10 +482,9 @@ void FireBall()
 			copyVector(&s_balls[i].pos, &s_paddle.pos);
 			s_balls[i].pos.vz += 10 * ONE;
 
-			setVector(&vel, -s_paddle.vel.vx, 0, 5 * ONE);
+			setVector(&vel, s_paddle.vel.vx / 3, 0, 4 * ONE / 2);
 			VectorNormal(&vel, &vel);
-
-			setVector(&s_balls[i].vel, vel.vx * 10, vel.vy * 10, vel.vz * 10);
+			setVector(&s_balls[i].vel, vel.vx * 7, vel.vy * 7, vel.vz * 7);
 			
 			return;
 		}
@@ -377,9 +587,15 @@ static u_long* s_paddleTMD = 0;
 /* Pointer to the loaded TMD file for the ball model. */
 static u_long* s_ballTMD = 0;
 
+#define NUM_BLOCK_TYPES 4
+static u_long* s_blockTMD[NUM_BLOCK_TYPES] = {0};
+
 /* Loads all the resource files required by the game. */
 static void LoadGameData()
 {
+	int blockType;
+	char buffer[16];
+
 	/* TODO: BACKGROUND loading while rendering a loading screen? */
 
 	s_floorTMD = LoadFile("LVFLOOR.TMD", 0);
@@ -415,6 +631,16 @@ static void LoadGameData()
 	{
 		ErrorMessage("Unable to load BORDER.TIM!");
 	}
+
+	for (blockType = 1; blockType <= NUM_BLOCK_TYPES; ++blockType)
+	{
+		sprintf(buffer, "BLOCK%02d.TMD", blockType);
+		s_blockTMD[blockType-1] = LoadFile(buffer, 0);
+		if (!s_blockTMD[blockType-1])
+		{
+			ErrorMessage("Unable to load %s file!", buffer);
+		}
+	}
 }
 
 /* Initializes the game state. */
@@ -434,6 +660,12 @@ static void InitGsGame()
 	ObjectCount += LinkModel(s_paddleTMD, &Object[2]);
 	ObjectCount += LinkModel(s_ballTMD, &Object[3]);
 
+	for (i = 0; i < NUM_BLOCK_TYPES; ++i)
+	{
+		ObjectCount += LinkModel(s_blockTMD[i], &Object[4 + i]);
+		Object[4 + i].attribute = 0;
+	}
+
 	Object[0].attribute = 0;
 	Object[1].attribute = GsDIV2;
 	Object[2].attribute = 0;
@@ -441,12 +673,24 @@ static void InitGsGame()
 
 	setVector(&s_paddle.pos, 0, 0, -250*ONE);
 
-	InitBall(1, 0);
+	g_tries = 3;
+	g_level = 1;
+	g_score = 0;
 }
 
 /* Unloads loaded TMD files from DRAM. */
 static void FreeGameData()
 {
+	int i;
+	for (i = 0; i < NUM_BLOCK_TYPES; ++i)
+	{
+		if (s_blockTMD[i] != 0)
+		{
+			free(s_blockTMD[i]);
+			s_blockTMD[i] = 0;
+		}
+	}
+
 	if (s_floorTMD != 0)
 	{
 		free(s_floorTMD);
@@ -479,9 +723,14 @@ static void FreeGameData()
  */
 int HandleGsGame()
 {
-	int i;
+	int i, j;
 	int activeBalls;
+	int ballOffset;
+	char buffer[64];
 	VECTOR ball;
+	u_char paused = 0;
+	u_char startPressed = 0;
+	int level = 0;
 
 	ControllerPacket* controllerPacket;
 
@@ -497,8 +746,6 @@ int HandleGsGame()
 		int x,xv;
 		int y,yv;
 		int z,zv;
-		int pan,panv;
-		int til,tilv;
 	} Player = {0};
 
 	LoadGameData();
@@ -509,7 +756,7 @@ int HandleGsGame()
 	GsInitCoordinate2(WORLD, &Camera.coord2);
 	
 	/* Set ambient color (for lighting) */
-	GsSetAmbient(ONE/10, ONE/8, ONE/4);
+	GsSetAmbient(ONE/4, ONE/2, ONE/3);
 	
 	/* Set default lighting mode */
 	GsSetLightMode(0);
@@ -520,75 +767,167 @@ int HandleGsGame()
 	Player.x = ONE*0;
 	Player.y = -ONE*236;
 	Player.z = -ONE*400;
-	Player.pan = 0;
-	Player.til = -550;
 
 	/* Setup light */
 	pslt.r = 0xff; pslt.g = 0xff; pslt.b = 0xff;
 	setVector(&pslt, 1*ONE, 5*ONE, -10*ONE);
 
-	setVector(&Camera.pos, Player.x/ONE, Player.y/ONE, Player.z/ONE);
+	setVector(&Camera.lookAt, 0, 0, 0);
+
+	pslt.vx = 0;
+	pslt.vy = 1;
+	pslt.vz = 3;
 
 	while(1)
 	{
 		controllerPacket = GetControllerPacket(0);
 
+		if (level != g_level)
+		{
+			level = g_level;
+			InitLevel(level);
+		}
+		
 		BeginFrame();
 
-		MovePaddle(controllerPacket);
-		MoveBalls();
-
-		copyVector(&Camera.lookAt, &s_paddle.pos);
-		
-		activeBalls = 1;
-		for (i = 0; i < MAX_BALLS; ++i)
+		if (paused)
 		{
-			if (s_balls[i].enabled && !s_balls[i].grabbed)
+			DrawText("PAUSE", -40, -8);
+		}
+		else
+		{
+			MovePaddle(controllerPacket);
+			if (MoveBalls() <= 0)
 			{
-				addVector(&Camera.lookAt, &s_paddle.pos);
-				addVector(&Camera.lookAt, &s_balls[i].pos);
-				activeBalls += 2;
+				g_tries--;
+				if (g_tries > 0)
+				{
+					InitBall(1, 0);
+				}
+			}
+
+			copyVector(&Camera.pos, &s_paddle.pos);
+			Camera.pos.vy -= 320 * ONE;
+			Camera.pos.vz -= 160 * ONE;
+			Camera.pos.vx /= ONE;
+			Camera.pos.vy /= ONE;
+			Camera.pos.vz /= ONE;
+			
+			activeBalls = 1;
+			for (i = 0; i < MAX_BALLS; ++i)
+			{
+				if (s_balls[i].enabled && !s_balls[i].grabbed)
+				{
+					addVector(&Camera.lookAt, &s_paddle.pos);
+					addVector(&Camera.lookAt, &s_balls[i].pos);
+					activeBalls += 2;
+				}
+			}
+
+			if (activeBalls > 1)
+			{
+				activeBalls++;
+				setVector(&Camera.lookAt, Camera.lookAt.vx / activeBalls,
+					Camera.lookAt.vy / activeBalls,
+					Camera.lookAt.vz / activeBalls);
 			}
 		}
 
-		if (activeBalls > 1)
-		{
-			setVector(&Camera.lookAt, Camera.lookAt.vx / activeBalls,
-				Camera.lookAt.vy / activeBalls,
-				Camera.lookAt.vz / activeBalls);
-		}
-		
 		// Calculate the camera and viewpoint matrix
 		CalculateCamera();
 		
 		// Set the light source coordinates
 		GsSetFlatLight(0, &pslt);
 		
+		if (g_tries <= 0)
+		{
+			DrawText("GAME OVER", -30, -8);
+			DrawText("Press SELECT to return", -92, -24);
+		}
+		else
+		{
+			sprintf(buffer, "Tries: %d", g_tries);
+			DrawTextColored(buffer, -160, -120, 128, 32, 16);
+
+			sprintf(buffer, "Level: %d", g_level);
+			DrawTextColored(buffer, -160, -104, 32, 96, 32);
+
+			sprintf(buffer, "Score: %d", g_score);
+			DrawTextColored(buffer, -160, -88, 48, 64, 128);
+		}
+
 		PutObject(s_paddle.pos, s_paddle.rot, &Object[2]);	// Paddle
 
-		// Balls
-		for (i = 0; i < MAX_BALLS; ++i)
+		/* TODO: Do proper sorting ffs T^T */
+
+		/* Blocks */
+		ballOffset = 0;
+		for (i = MAX_BLOCKS - 1; i >= 0; --i)
 		{
-			if (!s_balls[i].enabled)
+			if (s_blocks[i].type == 0)
 			{
 				continue;
 			}
 
-			PutObject(s_balls[i].pos, s_paddle.rot, &Object[3]);	// Ball
+			PutObject(s_blocks[i].pos, s_paddle.rot, &Object[3 + s_blocks[i].type]); // Block
+			
+			/* Balls */
+			for (j = ballOffset; j < MAX_BALLS; ++j)
+			{
+				if (!s_balls[j].enabled)
+				{
+					continue;
+				}
+
+				if (s_balls[j].pos.vz - ONE*8 < s_blocks[j].pos.vz + ONE*16)
+				{
+					continue;
+				}
+
+				PutObject(s_balls[j].pos, s_paddle.rot, &Object[3]);	// Ball
+				ballOffset = i;
+			}
+		}
+
+		for (j = ballOffset; j < MAX_BALLS; ++j)
+		{
+			if (!s_balls[j].enabled)
+			{
+				continue;
+			}
+
+			PutObject(s_balls[j].pos, s_paddle.rot, &Object[3]);	// Ball
 		}
 
 		PutObject(plat_pos, plat_rot, &Object[0]);	// Level
 		PutObject(plat_pos, plat_rot, &Object[1]);	// Level
+		
 
 		EndFrame();
 
 		if (ControllerPacketIsValid(controllerPacket))
 		{
-			if (IsPadButtonPressed(controllerPacket, PAD_Cross))
+			if (g_tries > 0)
 			{
-				FireBall();
-			}
+				if (IsPadButtonPressed(controllerPacket, PAD_Cross))
+				{
+					FireBall();
+				}
 
+				if (IsPadButtonPressed(controllerPacket, PAD_Start))
+				{
+					if (!startPressed)
+					{
+						paused = !paused;
+						startPressed = 1;
+					}
+				}
+				else
+				{
+					startPressed = 0;
+				}
+			}
+			
 			if (IsPadButtonPressed(controllerPacket, PAD_Select))
 			{
 				break;
